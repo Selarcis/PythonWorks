@@ -1,1 +1,0 @@
-This Discord bot takes an uploaded file and splits it into 2000 character chunks for posting. If the file size is greater than 5kb it will ask the user to manually post the chunks from the cropped file.
