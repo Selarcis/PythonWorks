@@ -22,7 +22,6 @@ import time
 import os
 import discord
 import asyncio
-import io
 from cropper import *
 from logger import *
 
@@ -85,11 +84,15 @@ async def on_message(message):
 
         # assign reused calls for my own sanity
         mgsChan = message.channel
-        print(message.attachments[0][0])
+        print(message.attachments[0])
         mgsAttch = message.attachments[0].filename
-        url = str(message.attachments[0]['url'])
+        print(mgsAttch)
+        url = str(message.attachments[0].url)
+        print(url)
         msg = 'Begin post for {0.author.mention}'.format(message)
+        print(msg)
         msg2 = 'End post for {0.author.mention}'.format(message)
+        print(msg2)
         global myFileChopped
         global myFileOrig
 
@@ -100,13 +103,14 @@ async def on_message(message):
         await message.channel.send(msg)
 
         # now we get the file from discord - how does this work? It works.
-        async with aiohttp.get(url) as resp:
-            with open(str(mgsAttch), 'wb') as fn:
-                while True:
-                    chunk = await resp.content.read()
-                    if not chunk:
-                        break
-                    fn.write(chunk)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                with open(str(mgsAttch), 'wb') as fn:
+                    while True:
+                        chunk = await resp.content.read()
+                        if not chunk:
+                            break
+                        fn.write(chunk)
 
         # pass the file name to a new variable
         myFileOrig = str(mgsAttch)
@@ -114,9 +118,9 @@ async def on_message(message):
 
         # check if the file size is rather big
         # if not, send the text to the channel
-        if message.attachments[0]['size'] <= 5000:
-            await TextToClient(myFileOrig,mgsChan,msg2, client)
-            await client.delete_message(message)
+        if message.attachments[0].size <= 5000:
+            await TextToClient(message,myFileOrig,message.channel,msg2,discord.client)
+            await message.delete()
         else:
             # process the text file into chunks
             # rename the file with the prefix chopped_

@@ -33,7 +33,6 @@ async def TextToFile(textString, charMaxCount=0, charCount=0, numPosts=0, newPos
         except FileNotFoundError:
             print("File not found error, please enter the name of the file again.")
             return False
-            break
 
     testText = textFromFile.read()
     # open (currently default) file to write 2000 character posts
@@ -87,7 +86,7 @@ async def TextToFile(textString, charMaxCount=0, charCount=0, numPosts=0, newPos
     s = str(userFileIn)
     print("Done! File: " + s + " has been processed")
 
-async def TextToClient(myFileOrig, mgsChan, msg2, client):
+async def TextToClient(message, myFileOrig, mgsChan, msg2, client):
     testText = io.open(myFileOrig, "r+", encoding="utf-8").read()
     arrayVar = []
     # max character split
@@ -127,7 +126,7 @@ async def TextToClient(myFileOrig, mgsChan, msg2, client):
                         # await client.send_message(mgsChan, postText)
                         break
                     # write new post
-                    await client.send_message(mgsChan, postText)
+                    await message.channel.send(postText)
                     # continue to collect total characters processed
                     newPostCounter += charCount
                     # reset currect post character count
@@ -136,4 +135,4 @@ async def TextToClient(myFileOrig, mgsChan, msg2, client):
         else:
             # break
             notComplete = False
-            await client.send_message(mgsChan, msg2)
+            await message.channel.send(msg2)
