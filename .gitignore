@@ -104,3 +104,4 @@ venv.bak/
 .mypy_cache/
 RPCropBot/token
 RPCropBot/*.txt
+RPCropBot/localLog.txt
