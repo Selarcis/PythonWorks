@@ -15,14 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import aiohttp
-import secrets
-import random
-import time
-import os
-import discord
-import asyncio
-import pathlib
+import aiohttp, secrets, random, time, os, discord, asyncio
 from cropper import *
 from logger import *
 
@@ -40,13 +33,14 @@ cleanned = True
 @client.event
 # the main event
 async def on_message(message):
-    async with message.channel.typing():
-        # don't talk to ourselves
-        if message.author == client.user:
-            return
 
-        # information about the bot
-        if message.content.startswith("!crop info"):
+    # don't talk to ourselves
+    if message.author == client.user:
+        return
+
+    # information about the bot
+    if message.content.startswith("!crop info"):
+        async with message.channel.typing():
             await message.channel.send(str(message.author.mention))
 
             await message.channel.send("""This bot takes a Text(.txt) file and processes it into 2000 character chunks to post to discord. If the file is larger than 5kb, than you must manually post the text from the chopped text file to the channel.
@@ -57,7 +51,8 @@ async def on_message(message):
 
             await message.channel.send("Current commands: !chop, !crop info, !crop legal")
 
-        if message.content.startswith("!crop legal"):
+    if message.content.startswith("!crop legal"):
+        async with message.channel.typing():
             await legallog(message)
             await message.channel.send(str(message.author.mention))
             await message.channel.send(
@@ -67,18 +62,20 @@ async def on_message(message):
         This is free software, and you are welcome to redistribute it
         under certain conditions; <http://www.gnu.org/licenses/gpl-3.0-standalone.html>""")
 
-        # admin remote stop - super secret
-        if message.content.startswith(str(stopToken)):
+    # admin remote stop - super secret
+    if message.content.startswith(str(stopToken)):
+        async with message.channel.typing():
             await adminlog(message)
-            await client.delete_message(message)
+            await message.delete()
             await message.channel.send("Goodbye! - shutdown by admin in 3..2..1")
             time.sleep(3)
             cleanup().close()
             await client.logout()
 
-        #so now we get to the good stuff
-        if message.content.startswith('!chop'):
-
+    #so now we get to the good stuff
+    if message.content.startswith('!chop'):
+        global cleanned
+        async with message.channel.typing():
             # here we take down some things: message author, message id, message url,
             # message size in bytes, message proxy url, and the file name
             await croplog(message)
@@ -121,7 +118,7 @@ async def on_message(message):
             # check if the file size is rather big
             # if not, send the text to the channel
             if message.attachments[0].size <= 5000:
-                await TextToClient(message,myFileOrig,message.channel,msg2,discord.client)
+                await TextToClient(message, myFileOrig, message.channel, msg2, discord.client)
                 await message.delete()
             else:
                 # process the text file into chunks
@@ -132,10 +129,15 @@ async def on_message(message):
 
                 if(mgsAttch):
                     await TextToFile(str(mgsAttch), message)
-                    await message.channel.send(
-                        content="File to big, please manually send the posts from the chopped file.",
-                        file=discord.File(str(myFileChopped))
-                    )
+                    try:
+                        await message.channel.send(
+                            content="File to big, please manually send the posts from the chopped file.",
+                            file=discord.File(str(myFileChopped))
+                        )
+                    except:
+                        await errorLog(message)
+                        cleanned = False
+                        return False
                     await message.channel.send(msg2)
                 else:
                     await message.channel.send(msg2)
@@ -143,7 +145,6 @@ async def on_message(message):
 
             # Done, time to let the user know
             print("End chop for " + str(message.author) + " file; " + str(mgsAttch) + "\n")
-            global cleanned
             cleanned = False
 
 

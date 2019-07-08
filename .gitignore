@@ -105,3 +105,4 @@ venv.bak/
 RPCropBot/token
 RPCropBot/*.txt
 RPCropBot/localLog.txt
+*.idea*

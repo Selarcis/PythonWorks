@@ -14,11 +14,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import io
+import io, time
 
 # admin command logging
 async def adminlog(message):
     logFile = io.open("localLog.txt", "a", encoding="utf-8")
+    logFile.write(str(time.strftime("%X %x")) + "\n")
     logFile.write(str(message.author) + "\n")
     logFile.write("content: " + str(message.content) + "\n")
     logFile.write("message id: " + str(message.id) + "\n")
@@ -26,8 +27,13 @@ async def adminlog(message):
     logFile.close()
 
 # general logging
+global filesDone
+filesDone = 0
 async def croplog(message):
+    global filesDone
+    filesDone += 1
     logFile = io.open("localLog.txt", "a", encoding="utf-8")
+    logFile.write(str(time.strftime("%X %x")) + "\n")
     # all the info in an attachment
     # if log has no content, user didn't upload a file
     attachList = ['url', 'size', 'proxy_url', 'id', 'filename']
@@ -38,12 +44,23 @@ async def croplog(message):
             logFile.write(i + ": " + str() + " bytes \n")
         else:
             logFile.write(i + ": " + str(message.attachments) + "\n")
-    logFile.write("__________________________\n")
+    logFile.write("____________FILE_%i__________\n" % filesDone)
 
 async def legallog(message):
     logFile = io.open("localLog.txt", "a", encoding="utf-8")
+    logFile.write(str(time.strftime("%X %x")) + "\n")
     logFile.write(str(message.author) + "\n")
     logFile.write("content: " + str(message.content) + "\n")
     logFile.write("message id: " + str(message.id) + "\n")
     logFile.write("_________LEGAL_REQUEST____________\n")
+    logFile.close()
+
+async def errorLog(message):
+    logFile = io.open("localLog.txt", "a", encoding="utf-8")
+    logFile.write(str(time.strftime("%X %x")) + "\n")
+    logFile.write(str(message.author) + "\n")
+    logFile.write("content: " + str(message.content) + "\n")
+    logFile.write("message id: " + str(message.id) + "\n")
+    logFile.write("message id: " + str(message.attachments) + "\n")
+    logFile.write("_________ERROR_REQUEST____________\n")
     logFile.close()
