@@ -22,6 +22,7 @@ import time
 import os
 import discord
 import asyncio
+import pathlib
 from cropper import *
 from logger import *
 
@@ -39,101 +40,112 @@ cleanned = True
 @client.event
 # the main event
 async def on_message(message):
+    async with message.channel.typing():
+        # don't talk to ourselves
+        if message.author == client.user:
+            return
 
-    # don't talk to ourselves
-    if message.author == client.user:
-        return
+        # information about the bot
+        if message.content.startswith("!crop info"):
+            await message.channel.send(str(message.author.mention))
 
-    # information about the bot
-    if message.content.startswith("!crop info"):
-        await message.channel.send(str(message.author.mention))
+            await message.channel.send("""This bot takes a Text(.txt) file and processes it into 2000 character chunks to post to discord. If the file is larger than 5kb, than you must manually post the text from the chopped text file to the channel.
+            """)
 
-        await message.channel.send("""This bot takes a Text(.txt) file and processes it into 2000 character chunks to post to discord. If the file is larger than 5kb, than you must manually post the text from the chopped text file to the channel.
-        """)
+            await message.channel.send("""IMPORTANT: The program will not accept anything other than a utf-8 encoded text file. To ensure that your file has the correct encoding, please open it in a text editor(notepad on windows PCs) and go to the file menu. Click 'save as' and select the propper encoding type.
+            """)
 
-        await message.channel.send("""IMPORTANT: The program will not accept anything other than a utf-8 encoded text file. To ensure that your file has the correct encoding, please open it in a text editor(notepad on windows PCs) and go to the file menu. Click 'save as' and select the propper encoding type.
-        """)
+            await message.channel.send("Current commands: !chop, !crop info, !crop legal")
 
-        await message.channel.send("Current commands: !chop, !crop info, !crop legal")
+        if message.content.startswith("!crop legal"):
+            await legallog(message)
+            await message.channel.send(str(message.author.mention))
+            await message.channel.send(
+        """RP Crop Bot Copyright (C) 2019 Selarcis
+    
+        This program comes with ABSOLUTELY NO WARRANTY;'.
+        This is free software, and you are welcome to redistribute it
+        under certain conditions; <http://www.gnu.org/licenses/gpl-3.0-standalone.html>""")
 
-    if message.content.startswith("!crop legal"):
-        await legallog(message)
-        await message.channel.send(str(message.author.mention))
-        await message.channel.send(
-    """RP Crop Bot Copyright (C) 2019 Selarcis
+        # admin remote stop - super secret
+        if message.content.startswith(str(stopToken)):
+            await adminlog(message)
+            await client.delete_message(message)
+            await message.channel.send("Goodbye! - shutdown by admin in 3..2..1")
+            time.sleep(3)
+            cleanup().close()
+            await client.logout()
 
-    This program comes with ABSOLUTELY NO WARRANTY;'.
-    This is free software, and you are welcome to redistribute it
-    under certain conditions; <http://www.gnu.org/licenses/gpl-3.0-standalone.html>""")
+        #so now we get to the good stuff
+        if message.content.startswith('!chop'):
 
-    # admin remote stop - super secret
-    if message.content.startswith(str(stopToken)):
-        await adminlog(message)
-        await client.delete_message(message)
-        await message.channel.send("Goodbye! - shutdown by admin in 3..2..1")
-        time.sleep(3)
-        cleanup().close()
-        await client.logout()
+            # here we take down some things: message author, message id, message url,
+            # message size in bytes, message proxy url, and the file name
+            await croplog(message)
 
-    #so now we get to the good stuff
-    if message.content.startswith('!chop'):
+            # assign reused calls for my own sanity
+            try:
+                mgsChan = message.channel
+                mgsAttch = message.attachments[0].filename
+                url = str(message.attachments[0].url)
+                msg = 'Begin post for {0.author.mention}'.format(message)
+                msg2 = 'End post for {0.author.mention}'.format(message)
+                global myFileChopped
+                global myFileOrig
+            except IndexError:
+                await message.channel.send("No file was attached to the message, please submit a text file and try again")
+                return False
+            except:
+                return False
 
-        # here we take down some things: message author, message id, message url,
-        # message size in bytes, message proxy url, and the file name
-        await croplog(message)
+            # print message that we are starting a chop for a user
+            print("Begin chop for " + str(message.author) + " file; " + str(mgsAttch))
 
-        # assign reused calls for my own sanity
-        mgsChan = message.channel
-        print(message.attachments[0])
-        mgsAttch = message.attachments[0].filename
-        print(mgsAttch)
-        url = str(message.attachments[0].url)
-        print(url)
-        msg = 'Begin post for {0.author.mention}'.format(message)
-        print(msg)
-        msg2 = 'End post for {0.author.mention}'.format(message)
-        print(msg2)
-        global myFileChopped
-        global myFileOrig
+            # send acknowledgment to user on Discord
+            await message.channel.send(msg)
 
-        # print message that we are starting a chop for a user
-        print("Begin chop for " + str(message.author) + " file; " + str(mgsAttch))
+            # now we get the file from discord - how does this work? It works.
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    with open(str(mgsAttch), 'wb') as fn:
+                        while True:
+                            chunk = await resp.content.read()
+                            if not chunk:
+                                break
+                            fn.write(chunk)
 
-        # send acknowledgment to user on Discord
-        await message.channel.send(msg)
+            # pass the file name to a new variable
+            myFileOrig = str(mgsAttch)
+            filenamelist.append(str(myFileOrig))
 
-        # now we get the file from discord - how does this work? It works.
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                with open(str(mgsAttch), 'wb') as fn:
-                    while True:
-                        chunk = await resp.content.read()
-                        if not chunk:
-                            break
-                        fn.write(chunk)
+            # check if the file size is rather big
+            # if not, send the text to the channel
+            if message.attachments[0].size <= 5000:
+                await TextToClient(message,myFileOrig,message.channel,msg2,discord.client)
+                await message.delete()
+            else:
+                # process the text file into chunks
+                # rename the file with the prefix chopped_
+                myFileChopped = str("chopped_" + mgsAttch)
+                print(myFileOrig, myFileChopped)
+                filenamelist.append(str(myFileChopped))
 
-        # pass the file name to a new variable
-        myFileOrig = str(mgsAttch)
-        filenamelist.append(str(myFileOrig))
+                if(mgsAttch):
+                    await TextToFile(str(mgsAttch), message)
+                    await message.channel.send(
+                        content="File to big, please manually send the posts from the chopped file.",
+                        file=discord.File(str(myFileChopped))
+                    )
+                    await message.channel.send(msg2)
+                else:
+                    await message.channel.send(msg2)
+                    return
 
-        # check if the file size is rather big
-        # if not, send the text to the channel
-        if message.attachments[0].size <= 5000:
-            await TextToClient(message,myFileOrig,message.channel,msg2,discord.client)
-            await message.delete()
-        else:
-            # process the text file into chunks
-            # rename the file with the prefix chopped_
-            myFileChopped = str("chopped_" + mgsAttch)
-            filenamelist.append(str(myFileChopped))
-            await TextToFile(str(mgsAttch))
-            await client.send_file(mgsChan, str(myFileChopped), content="File to big, please manually send the posts from the chopped file.")
-            await message.channel.send(msg2)
+            # Done, time to let the user know
+            print("End chop for " + str(message.author) + " file; " + str(mgsAttch) + "\n")
+            global cleanned
+            cleanned = False
 
-        # Done, time to let the user know
-        print("End chop for " + str(message.author) + " file; " + str(mgsAttch) + "\n")
-        global cleanned
-        cleanned = False
 
 async def cleanup():
     print("Cleaning...")

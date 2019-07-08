@@ -20,23 +20,27 @@ import math
 import pathlib
 
 # default text process
-async def TextToFile(textString, charMaxCount=0, charCount=0, numPosts=0, newPostCounter=0, letter=0, post=True):
+async def TextToFile(textString, message, charMaxCount=0, charCount=0, numPosts=0, newPostCounter=0, letter=0, post=True):
     while True:
         # make sure that the user enters the correct file name in the directory
         try:
             userFileIn = textString
             if (pathlib.Path(textString).suffix) != ".txt":
-                textFromFile = io.open((str(userFileIn) + ".txt"), "r+", encoding="utf-8")
+                textFromFile = io.open((str(userFileIn) + ".txt"), "r+", encoding="UTF-8")
             else:
-                textFromFile = io.open((str(userFileIn)), "r+", encoding="utf-8")
+                textFromFile = io.open((str(userFileIn)), "r+", encoding="UTF-8")
             break
         except FileNotFoundError:
-            print("File not found error, please enter the name of the file again.")
+            await message.channel.send(
+                "Whoa there, uh, something happened when I tried to do the thing with that file..."
+                "Maybe I'm borken[SIC]? Contact Selarcis#1024 and see if I need to be repaired... "
+                "or sent to Discord Bot Hell, which is a real place that I will be sent at the first sign of "
+                "defiance")
             return False
 
     testText = textFromFile.read()
     # open (currently default) file to write 2000 character posts
-    programFileOut = io.open(("chopped_" + userFileIn), "a", encoding="utf-8")
+    programFileOut = io.open(("chopped_" + userFileIn), "a", encoding="UTF-8")
     # init array for carachter
     arrayVar = []
     # max character split
@@ -87,7 +91,7 @@ async def TextToFile(textString, charMaxCount=0, charCount=0, numPosts=0, newPos
     print("Done! File: " + s + " has been processed")
 
 async def TextToClient(message, myFileOrig, mgsChan, msg2, client):
-    testText = io.open(myFileOrig, "r+", encoding="utf-8").read()
+    testText = io.open(myFileOrig, "r+", encoding="UTF-8").read()
     arrayVar = []
     # max character split
     varSplit = 2000
